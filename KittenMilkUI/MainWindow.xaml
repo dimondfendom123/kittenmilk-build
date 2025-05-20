@@ -1,0 +1,206 @@
+﻿<Window
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:local="clr-namespace:KittenMilkUI"
+    xmlns:Wpf="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf" 
+    x:Class="KittenMilkUI.MainWindow"
+    mc:Ignorable="d"
+    Title="KittenMilk" Height="450" Width="914" Background="#FF161616">
+
+    <Window.Resources>
+        <Style x:Key="CustomButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#FF2D2D2D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF7F7E7B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter RecognizesAccessKey="True"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#FF7F7E7B"/>
+                                <Setter TargetName="border" Property="Background" Value="#FF3D3D3D"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#FF1D1D1D"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Background" Value="#FF2D2D2D"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#FF7F7E7B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#FF7F7E7B"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="#FF161616"/>
+            <Setter Property="BorderBrush" Value="#FF7F7E7B"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#FF7F7E7B"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="529"/>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="0*"/>
+        </Grid.ColumnDefinitions>
+
+        <Wpf:WebView2 x:Name="webView" 
+                     Grid.Column="0" Margin="0,0,0,33"/>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="279*"/>
+                    <RowDefinition Height="131*"/>
+                </Grid.RowDefinitions>
+                <StackPanel Margin="5,10,8,0" Grid.RowSpan="2">
+                    <TextBox x:Name="scriptlistsearch"
+                            Background="#FF2D2D2D"
+                            Foreground="Gray"
+                            Text="Search"
+                            BorderBrush="#FF7F7E7B"/>
+                    <ListBox x:Name="scriptlists" 
+                            BorderBrush="#FF7F7E7B" 
+                            Background="#FF161616" 
+                            ItemsSource="{Binding Files}"
+                            Foreground="White"
+                            ScrollViewer.VerticalScrollBarVisibility="Auto"
+                            Height="222">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="White"/>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+
+                <RichTextBox x:Name="debuglog" 
+                            Margin="5,276,8,10"
+                            BorderBrush="#FF7F7E7B" 
+                            SelectionBrush="White" 
+                            IsEnabled="True" 
+                            Background="#FF161616" 
+                            Foreground="White"
+                            FontFamily="Consolas"
+                            VerticalScrollBarVisibility="Auto" Grid.RowSpan="2">
+                    <FlowDocument>
+                        <Paragraph>
+                            <Run Text="Loading debug log..."/>
+                        </Paragraph>
+                    </FlowDocument>
+                </RichTextBox>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="0,0,8,3">
+                <Button Content="Execute" 
+                        Style="{StaticResource CustomButtonStyle}"
+                        HorizontalAlignment="Left"
+                        Margin="-245,0,0,1"
+                        Width="243"
+                        Height="20"/>
+
+                <Button Content="Inject" 
+                        Style="{StaticResource CustomButtonStyle}"
+                        HorizontalAlignment="Left"
+                        Margin="-519,0,0,1"
+                        Width="269"
+                        Height="20"/>
+
+                <Button Content="Clean SirHurt" 
+                        Style="{StaticResource CustomButtonStyle}"
+                        Margin="5,0,195,0"
+                        Height="21"
+                        RenderTransformOrigin="0.5,0.5">
+                    <Button.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform/>
+                            <SkewTransform/>
+                            <RotateTransform Angle="-0.083"/>
+                            <TranslateTransform/>
+                        </TransformGroup>
+                    </Button.RenderTransform>
+                </Button>
+
+                <Button Content="Kill Roblox"
+                        Style="{StaticResource CustomButtonStyle}"
+                        Margin="0,0,0,1"
+                        Height="20" HorizontalAlignment="Right" Width="191"/>
+                <Button Content="Clear" 
+                    Style="{StaticResource CustomButtonStyle}"
+                    HorizontalAlignment="Left"
+                        
+                    RenderTransformOrigin="0.522,0.537" Margin="5,-158,0,158" Click="Button_Click_1" Width="93">
+                </Button>
+                <Button Content="Save" 
+            Style="{StaticResource CustomButtonStyle}"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top"
+            Margin="98,-158,0,0"
+            Height="21"
+            Width="95"
+            RenderTransformOrigin="0.5,0.5">
+                </Button>
+                <Button Content="Open File" 
+                    Style="{StaticResource CustomButtonStyle}"
+                    Margin="193,-158,0,158"
+                    Height="21"
+                    RenderTransformOrigin="0.5,0.5" HorizontalAlignment="Left" Width="89">
+                </Button>
+                <Button Content="Execute File" 
+                    Style="{StaticResource CustomButtonStyle}"
+                    Margin="282,-158,0,158"
+                    Height="21"
+                    RenderTransformOrigin="0.5,0.5">
+                </Button>
+            </Grid>
+        </Grid>
+        <Image HorizontalAlignment="Left" Margin="6,0,0,35" Width="31" Source="/vapelate2.png" Grid.Column="1" Height="24" VerticalAlignment="Bottom" RenderTransformOrigin="0.5,0.5">
+            <Image.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform/>
+                    <SkewTransform/>
+                    <RotateTransform Angle="-359.833"/>
+                    <TranslateTransform/>
+                </TransformGroup>
+            </Image.RenderTransform>
+        </Image>
+        <Rectangle HorizontalAlignment="Center" Margin="0,0,0,8" Stroke="White" Width="11" Fill="Red" Height="11" VerticalAlignment="Bottom" RadiusX="20" RadiusY="20"/>
+    </Grid>
+</Window>

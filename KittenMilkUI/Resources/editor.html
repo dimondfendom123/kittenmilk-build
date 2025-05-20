@@ -1,0 +1,601 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <title>Editor</title>
+    <style type="text/css" media="screen">
+        :root {
+            --tab-height: 30px;
+            --bg: #161616;
+            --tab-bg: #2b2f32;
+            --tab-hover-bg: #353b3f;
+            --tab-btn-active-bg: #464d52;
+            --tab-active-border: #dde1e5;
+            --tab-active-bg: #32373b;
+        }
+
+        body {
+            overflow: auto;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            color: rgb(222, 222, 222);
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+        }
+
+        #editor {
+            margin: 0;
+            position: absolute;
+            top: var(--tab-height);
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            height: calc(100% - var(--tab-height));
+        }
+
+        .tabs-container {
+            height: var(--tab-height);
+            background-color: var(--bg);
+        }
+
+        .tabs {
+            width: 100%;
+            height: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            background-color: var(--bg);
+            white-space: nowrap;
+            padding: 0;
+            margin: 0;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+            .tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+        .tab {
+            min-width: 100px;
+            max-width: 200px;
+            height: var(--tab-height);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            background-color: var(--tab-bg);
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            cursor: pointer;
+            user-select: none;
+            font-size: 13px;
+            padding: 0 5px;
+            position: relative;
+            border-bottom: 2px solid transparent;
+        }
+
+            .tab:hover {
+                background-color: var(--tab-hover-bg);
+            }
+
+            .tab.active {
+                background-color: var(--tab-active-bg);
+            }
+
+                .tab.active::after {
+                    content: '';
+                    position: absolute;
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    height: 2px;
+                    background-color: var(--tab-active-border);
+                }
+
+        .tabContent {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            justify-content: space-between;
+        }
+
+        .tab span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex-grow: 1;
+            padding: 0 5px;
+        }
+
+        .tab button {
+            width: 20px;
+            height: 20px;
+            border: none;
+            background-color: transparent;
+            color: rgb(222, 222, 222);
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            cursor: pointer;
+            flex-shrink: 0;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            border-radius: 3px;
+        }
+
+            .tab button:hover {
+                opacity: 1;
+                background-color: var(--tab-btn-active-bg);
+            }
+
+        #addTab {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            height: var(--tab-height);
+            width: var(--tab-height);
+            background-color: var(--bg);
+            cursor: pointer;
+        }
+
+            #addTab button {
+                width: 100%;
+                height: 100%;
+                border: none;
+                padding: 0;
+                background-color: transparent;
+                color: rgb(222, 222, 222);
+                cursor: pointer;
+                font-size: 18px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+
+                #addTab button:hover {
+                    background-color: var(--tab-hover-bg);
+                }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #131313;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #505050;
+            border-radius: 10px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: #5e5e5e;
+            }
+    </style>
+    <!-- Updated paths to work with WebView2 virtual host mapping -->
+    <script src="https://ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="https://ace/ext-language_tools.js" type="text/javascript" charset="utf-8"></script>
+</head>
+<body>
+    <div class="tabs-container">
+        <div class="tabs" id="tabsContainer">
+            <div class="tab" style="display: none" id="placeholdertab">
+                <div class="tabContent">
+                    <span>Tab Name</span><button>✖</button>
+                </div>
+            </div>
+            <div id="addTab">
+                <button id="addTabBtn">+</button>
+            </div>
+        </div>
+    </div>
+    <pre id="editor"></pre>
+    <script>
+        // Global functions to be called from C#
+        var GetText;
+        var SetText;
+        var ClearText;
+        var SetTheme;
+        var OpenFileInNewTab;
+        var SaveTabs;
+        var LoadTabs;
+
+        // Editor state
+        var tabs = {};
+        var openFiles = {};
+        var nTabs = 0;
+        var currentTabName = "";
+        var createdTabs = 1;
+        var filePaths = {};
+
+        // DOM elements
+        var placeholderTab = document.getElementById("placeholdertab");
+        var tabholder = document.getElementById("tabsContainer");
+        var activeTab;
+        var addTabBtn = document.getElementById("addTab");
+        var editorEl = document.getElementById("editor");
+
+        // Initialize Ace Editor
+        function initializeAceEditor() {
+            try {
+                ace.require("ace/ext/language_tools");
+                var editor = ace.edit("editor");
+                editor.setTheme("ace/theme/chaos");
+                editor.session.setMode("ace/mode/lua");
+                editor.setOption("enableLiveAutocompletion", true);
+                editor.setOption("cursorStyle", "smooth");
+                editorEl.style.fontSize = "13px";
+
+                // Expose editor functions to C#
+                GetText = function () {
+                    return editor.getValue();
+                };
+
+                SetText = function (x) {
+                    editor.setValue(x, -1); // -1 moves cursor to start
+                };
+
+                ClearText = function () {
+                    editor.setValue("");
+                };
+
+                SetTheme = function (th) {
+                    editor.setTheme("ace/theme/" + th);
+                };
+
+                // Notify host that editor is ready
+                if (window.chrome && chrome.webview) {
+                    chrome.webview.postMessage("EditorReady");
+                }
+
+                return editor;
+            } catch (e) {
+                console.error("Ace initialization failed:", e);
+                if (window.chrome && chrome.webview) {
+                    chrome.webview.postMessage({
+                        type: "Error",
+                        message: "Ace initialization failed: " + e.message
+                    });
+                }
+                return null;
+            }
+        }
+
+        var editor = initializeAceEditor();
+
+        // Tab management functions
+        function OpenTab(idx) {
+            var tab = tabs[idx];
+            if (!tab || !editor) return;
+
+            editor.setSession(tab[1]);
+            currentTabName = tab[0].firstElementChild.childNodes[1].textContent;
+
+            if (activeTab) {
+                activeTab.classList.remove("active");
+                activeTab.style.backgroundColor = "";
+                activeTab.firstElementChild.childNodes[2].style.backgroundColor = "";
+            }
+
+            tab[0].classList.add("active");
+            tab[0].style.backgroundColor = "var(--tab-active-bg)";
+            tab[0].firstElementChild.childNodes[2].style.backgroundColor = "var(--tab-active-bg)";
+            activeTab = tab[0];
+            tab[0].scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+
+        function CreateTab(name, content = "") {
+            if (!editor) return null;
+
+            // Check if tab already exists
+            for (let id in tabs) {
+                if (tabs[id] && tabs[id][0].firstElementChild.childNodes[1].textContent === name) {
+                    OpenTab(id);
+                    return id;
+                }
+            }
+
+            // Create new tab
+            var tabClone = placeholderTab.cloneNode(true);
+            tabClone.style.display = "inline-flex";
+            tabClone.firstElementChild.childNodes[1].textContent = name;
+            tabholder.insertBefore(tabClone, addTabBtn);
+
+            // Create new Ace session
+            var session = ace.createEditSession(content);
+            session.setMode("ace/mode/lua");
+            session.setUseWrapMode(true);
+            editor.setShowPrintMargin(false);
+
+            var tabId = Object.keys(tabs).length;
+            tabs[tabId] = [tabClone, session];
+            openFiles[name] = tabId;
+            nTabs += 1;
+
+            // Add event listeners
+            tabClone.firstElementChild.childNodes[2].addEventListener("click", (e) => {
+                e.stopPropagation();
+                CloseTab(tabId);
+            });
+
+            tabClone.addEventListener("click", function () {
+                OpenTab(tabId);
+            });
+
+            OpenTab(tabId);
+            return tabId;
+        }
+
+        function CloseTab(tabId) {
+            if (nTabs <= 1) return;
+
+            const tab = tabs[tabId];
+            if (!tab) return;
+
+            const tabName = tab[0].firstElementChild.childNodes[1].textContent;
+            tab[0].remove();
+            nTabs -= 1;
+            delete openFiles[tabName];
+            delete filePaths[tabName];
+            tabs[tabId] = null;
+
+            if (activeTab === tab[0]) {
+                let nextTabId = null;
+
+                // Try to find next tab to the right
+                for (let i = tabId + 1; i < Object.keys(tabs).length; i++) {
+                    if (tabs[i] !== null) {
+                        nextTabId = i;
+                        break;
+                    }
+                }
+
+                // If none found to the right, try left
+                if (nextTabId === null) {
+                    for (let i = tabId - 1; i >= 0; i--) {
+                        if (tabs[i] !== null) {
+                            nextTabId = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (nextTabId !== null) {
+                    OpenTab(nextTabId);
+                }
+            }
+        }
+
+        OpenFileInNewTab = function (fileName, fileContent, fullPath = null) {
+            const tabId = CreateTab(fileName, fileContent);
+            if (fullPath && tabId !== null) {
+                filePaths[fileName] = fullPath;
+            }
+            return tabId;
+        };
+
+        SaveTabs = function () {
+            const savedTabs = [];
+            for (let key in tabs) {
+                if (tabs[key] != null) {
+                    const tabName = tabs[key][0].firstElementChild.childNodes[1].textContent;
+                    const tabContent = tabs[key][1].getValue();
+                    savedTabs.push({
+                        name: tabName,
+                        content: tabContent,
+                        path: filePaths[tabName] || null
+                    });
+                }
+            }
+            localStorage.setItem("editorTabs", JSON.stringify(savedTabs));
+        };
+
+        LoadTabs = function () {
+            try {
+                const savedTabs = JSON.parse(localStorage.getItem("editorTabs"));
+                if (savedTabs && Array.isArray(savedTabs)) {
+                    // Clear existing tabs
+                    Object.keys(tabs).forEach((key) => {
+                        if (tabs[key] != null) {
+                            tabs[key][0].remove();
+                        }
+                    });
+
+                    nTabs = 0;
+                    tabs = {};
+
+                    // Create tabs from saved data
+                    savedTabs.forEach((tabData, index) => {
+                        const tabId = CreateTab(tabData.name, tabData.content);
+                        if (tabData.path) {
+                            filePaths[tabData.name] = tabData.path;
+                        }
+                    });
+
+                    if (savedTabs.length > 0) {
+                        OpenTab(0);
+                    }
+
+                    createdTabs = savedTabs.length;
+                }
+            } catch (e) {
+                console.error("Error loading tabs:", e);
+            }
+        };
+
+        // Event listeners
+        addTabBtn.addEventListener("click", () => {
+            const tabId = CreateTab("Script " + createdTabs.toString());
+            if (tabId !== null) {
+                createdTabs += 1;
+            }
+        });
+
+        tabholder.addEventListener('wheel', function (e) {
+            if (e.deltaY > 0) {
+                this.scrollLeft += 50;
+            } else {
+                this.scrollLeft -= 50;
+            }
+            e.preventDefault();
+        });
+
+        // Initialize with first tab
+        CreateTab("Script 0");
+        OpenTab(0);
+
+        // Disable context menu
+        document.oncontextmenu = function () {
+            return false;
+        };
+
+        // File operations
+        async function saveTextToFile() {
+            if (!editor || !currentTabName) return;
+
+            const text = GetText();
+            const fullPath = filePaths[currentTabName];
+
+            if (window.chrome && chrome.webview) {
+                chrome.webview.postMessage({
+                    type: fullPath ? "SaveFile" : "SaveFileDefault",
+                    path: fullPath,
+                    name: currentTabName.replace(/\*+$/, ""),
+                    content: text
+                });
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener("keydown", function (e) {
+            if (!editor) return;
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                saveTextToFile();
+            }
+            else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
+                e.preventDefault();
+                const activeTabId = Object.keys(tabs).find(id => tabs[id] && tabs[id][0] === activeTab);
+                if (activeTabId) {
+                    CloseTab(parseInt(activeTabId));
+                }
+            }
+            else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "t") {
+                e.preventDefault();
+                const newTabId = CreateTab("Script " + createdTabs.toString());
+                if (newTabId !== null) {
+                    createdTabs += 1;
+                }
+            }
+            else if ((e.ctrlKey || e.metaKey) && e.key === "Tab" && !e.shiftKey) {
+                e.preventDefault();
+                const activeTabId = Object.keys(tabs).find(id => tabs[id] && tabs[id][0] === activeTab);
+                if (activeTabId) {
+                    const nextTabId = GetNextTabId(parseInt(activeTabId), 1);
+                    if (nextTabId !== null) {
+                        OpenTab(nextTabId);
+                    }
+                }
+            }
+            else if ((e.ctrlKey || e.metaKey) && e.key === "Tab" && e.shiftKey) {
+                e.preventDefault();
+                const activeTabId = Object.keys(tabs).find(id => tabs[id] && tabs[id][0] === activeTab);
+                if (activeTabId) {
+                    const prevTabId = GetNextTabId(parseInt(activeTabId), -1);
+                    if (prevTabId !== null) {
+                        OpenTab(prevTabId);
+                    }
+                }
+            }
+        });
+
+        // Helper function for tab navigation
+        function GetNextTabId(currentId, direction = 1) {
+            const tabIds = Object.keys(tabs).map(Number).filter(id => tabs[id] !== null);
+            if (tabIds.length === 0) return null;
+
+            const currentIndex = tabIds.indexOf(currentId);
+            if (currentIndex === -1) return tabIds[0];
+
+            let nextIndex = currentIndex + direction;
+            if (nextIndex >= tabIds.length) nextIndex = 0;
+            if (nextIndex < 0) nextIndex = tabIds.length - 1;
+
+            return tabIds[nextIndex];
+        }
+
+        // Drag and drop functionality
+        const allowedExtensions = [".lua", ".txt"];
+
+        document.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            const file = e.dataTransfer.items?.[0]?.getAsFile();
+            if (file && allowedExtensions.some(ext => file.name.endsWith(ext))) {
+                e.dataTransfer.dropEffect = "copy";
+                document.body.style.cursor = "copy";
+            } else {
+                e.dataTransfer.dropEffect = "none";
+                document.body.style.cursor = "not-allowed";
+            }
+        });
+
+        document.addEventListener("dragleave", () => {
+            document.body.style.cursor = "default";
+        });
+
+        document.addEventListener("drop", function (e) {
+            e.preventDefault();
+            document.body.style.cursor = "default";
+
+            const file = e.dataTransfer.files?.[0];
+            if (!file) return;
+
+            const name = file.name;
+            const ext = name.substring(name.lastIndexOf(".")).toLowerCase();
+
+            if (!allowedExtensions.includes(ext)) {
+                alert("Unsupported file type. Only .lua and .txt allowed.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const content = e.target.result;
+
+                if (window.chrome && chrome.webview) {
+                    chrome.webview.postMessage({
+                        type: "DropFileOpened",
+                        name: name,
+                        content: content
+                    });
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Error handling
+        window.addEventListener('error', function (e) {
+            console.error('Global error:', e.error);
+            if (window.chrome && chrome.webview) {
+                chrome.webview.postMessage({
+                    type: "JSError",
+                    message: e.error.toString(),
+                    stack: e.error.stack
+                });
+            }
+        });
+
+        // Notify host that initialization is complete
+        if (window.chrome && chrome.webview) {
+            chrome.webview.postMessage("EditorInitialized");
+        }
+    </script>
+</body>
+</html>
